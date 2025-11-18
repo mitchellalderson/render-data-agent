@@ -185,14 +185,14 @@ This starts:
 - Streamlit app (port 8501)
 - PostgreSQL database (port 5432)
 
-4. **Load sample data:**
+4. **Run database migrations:**
 
 ```bash
 # Wait for PostgreSQL to be ready
 sleep 10
 
-# Load sample data
-docker-compose exec db psql -U postgres -d render_data -f /docker-entrypoint-initdb.d/mock_signups.sql
+# Run migrations (creates tables and loads sample data)
+docker-compose exec app uv run python migrate.py
 ```
 
 5. **Access the application:**
@@ -252,10 +252,14 @@ MAX_UPLOAD_SIZE_MB=50
 DEBUG_MODE=false
 ```
 
-4. **Set up the database:**
+4. **Run database migrations:**
 
 ```bash
-psql -U postgres -d render_data -f data/mock_signups.sql
+# Ensure DATABASE_URL is set in .env, then:
+uv run python migrate.py
+
+# Or manually with psql:
+# psql -U postgres -d render_data -f data/mock_signups.sql
 ```
 
 5. **Run the application:**
@@ -308,6 +312,35 @@ docker-compose exec db psql -U postgres -d render_data
 ```bash
 uv run streamlit run main.py
 ```
+
+## 🔄 Database Migrations
+
+Database migrations are **fully automated** for both Render deployment and local development:
+
+### Render Deployment (Production)
+- ✅ Migrations run automatically before each deployment via `preDeployCommand`
+- ✅ Safe to run multiple times (idempotent)
+- ✅ Creates `user_signups` table and loads sample data
+- ✅ No manual intervention required
+
+### Local Development
+Run migrations manually when setting up or updating your database:
+
+```bash
+# Using the migration script (recommended)
+uv run python migrate.py
+
+# Or using psql directly
+psql -U postgres -d render_data -f data/mock_signups.sql
+```
+
+### What the Migration Does
+1. Creates `user_signups` table with proper schema
+2. Inserts 20 sample customer records
+3. Creates indexes for better query performance
+4. Skips duplicates if run multiple times (idempotent)
+
+The migration script is located at `migrate.py` and the SQL schema is in `data/mock_signups.sql`.
 
 ## 📖 Usage Guide
 

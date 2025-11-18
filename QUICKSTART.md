@@ -18,7 +18,7 @@ Get the ICP Analysis Dashboard running in under 5 minutes with Docker!
 
 **Don't have Docker?** [Install Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-## Three Simple Steps
+## Four Simple Steps
 
 ### 1. Copy Environment File
 
@@ -50,10 +50,18 @@ That's it! 🎉
 
 The app will be running at: **http://localhost:8501**
 
-The database will automatically:
-- Create the `render_data` database
-- Set up the `user_signups` table
-- Load 20 sample records
+### 4. Run Database Migrations
+
+```bash
+# Wait a few seconds for PostgreSQL to start, then:
+docker-compose exec app uv run python migrate.py
+```
+
+This will automatically:
+- ✅ Create the `render_data` database schema
+- ✅ Set up the `user_signups` table
+- ✅ Load 20 sample records with test data
+- ✅ Create performance indexes
 
 ## Using the App
 
@@ -346,8 +354,13 @@ OPENAI_API_KEY=sk-your-key-here
 # Create database
 createdb render_data
 
-# Load sample data
-psql -U postgres -d render_data -f data/mock_signups.sql
+# Run migrations (recommended)
+uv run python migrate.py
+# Or use the helper script:
+./migrate.sh
+
+# Or load manually:
+# psql -U postgres -d render_data -f data/mock_signups.sql
 ```
 
 **4. Run the App**

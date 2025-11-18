@@ -12,7 +12,7 @@ from typing import Optional
 # Import our custom modules
 from src.config import config
 from src.database import get_database_connection
-from src.styles import get_render_css, render_header, render_section_header
+from src.styles import get_render_css, render_header, render_section_header, scroll_to_top
 from src.data_processing import DataCleaner, SchemaMapper, DataValidator
 from src.llm_client import LLMClient, test_connection
 from src.icp_analyzer import ICPAnalyzer
@@ -322,6 +322,9 @@ def main():
     if selected_tab != active_tab:
         st.session_state["active_tab"] = selected_tab
         st.rerun()
+    
+    # Scroll to top when rendering tab content
+    st.markdown(scroll_to_top(), unsafe_allow_html=True)
     
     st.markdown("---")
     

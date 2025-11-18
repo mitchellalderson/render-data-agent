@@ -8,18 +8,34 @@ This directory contains sample data files for testing the ICP Analysis Dashboard
 
 SQL script to create and populate a PostgreSQL database with sample user signup data.
 
-**To use:**
+**Automated Migration (Recommended):**
+```bash
+# For Render deployment: Automatic (runs on every deploy)
+# For local development:
+uv run python migrate.py
+# Or use the helper script:
+./migrate.sh
+```
+
+**Manual Migration (Alternative):**
 ```bash
 psql -U postgres -d render_data -f data/mock_signups.sql
 ```
 
 **Contains:**
 - `user_signups` table schema
-- 15 mock user records
-- Various industries: SaaS, Technology, E-commerce, Finance, Healthcare, etc.
-- Company sizes from startups to enterprises
-- Revenue ranges and use cases
-- Metadata in JSONB format
+- 20 mock user records
+- Various industries: Technology, AI, Finance, SaaS
+- Company sizes from 50-200 to 200-1000 employees
+- Revenue ranges ($1M-$50M+)
+- Use cases and metadata in JSONB format
+- Performance indexes for common queries
+
+**Features:**
+- ✅ Idempotent (safe to run multiple times)
+- ✅ Uses `ON CONFLICT DO NOTHING` for duplicate prevention
+- ✅ Creates indexes automatically
+- ✅ Fully automated on Render deployments
 
 ## CSV Data
 

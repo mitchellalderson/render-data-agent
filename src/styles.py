@@ -308,3 +308,36 @@ def render_section_header(title: str, description: str = "") -> str:
     </div>
     """
 
+
+def scroll_to_top() -> str:
+    """
+    Get JavaScript code to scroll to the top of the page.
+    
+    This uses multiple methods to ensure compatibility across browsers
+    and different Streamlit versions.
+    
+    Returns:
+        HTML string with embedded JavaScript to scroll to top
+    """
+    return """
+    <script>
+        // Wait for DOM to be ready
+        window.addEventListener('load', function() {
+            // Method 1: Scroll the main content area
+            const mainContent = window.parent.document.querySelector('section.main');
+            if (mainContent) {
+                mainContent.scrollTo({top: 0, behavior: 'instant'});
+            }
+            
+            // Method 2: Scroll the app view container
+            const appView = window.parent.document.querySelector('[data-testid="stAppViewContainer"]');
+            if (appView) {
+                appView.scrollTo({top: 0, behavior: 'instant'});
+            }
+            
+            // Method 3: Scroll the window itself
+            window.parent.scrollTo({top: 0, behavior: 'instant'});
+        });
+    </script>
+    """
+
