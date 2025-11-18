@@ -1,0 +1,75 @@
+databases:
+  # PostgreSQL Database
+  - name: icp-analysis-db
+    databaseName: render_data
+    plan: starter
+    region: oregon
+    ipAllowList: []  # Allow connections from all Render services
+
+services:
+  # Streamlit Web Application
+  - type: web
+    name: icp-analysis-dashboard
+    runtime: docker
+    plan: starter
+    region: oregon
+    
+    # Use the root Dockerfile
+    dockerfilePath: ./Dockerfile
+    
+    # Environment variables for the Streamlit app
+    envVars:
+      # Database configuration (connects to the database above)
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: icp-analysis-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: icp-analysis-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: icp-analysis-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: icp-analysis-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: icp-analysis-db
+          property: password
+      - key: DATABASE_URL
+        fromDatabase:
+          name: icp-analysis-db
+          property: connectionString
+      
+      # LLM API Configuration
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_MODEL
+        value: gpt-4-turbo-preview
+      
+      # App Configuration
+      - key: APP_TITLE
+        value: ICP Analysis Dashboard
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "50"
+      - key: DEBUG_MODE
+        value: "false"
+      - key: NODE_ENV
+        value: production
+    
+    # Health check endpoint (Streamlit health endpoint)
+    healthCheckPath: /_stcore/health
+    
+    # Auto-deploy from main branch
+    autoDeploy: true
+
+version: "1"
+

@@ -1,0 +1,39 @@
+# Development Docker Compose Configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  app:
+    # Override build for faster rebuilds
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - render-data-app:latest
+    
+    # Mount source code for hot-reload
+    volumes:
+      - ./:/app
+      - ./data:/app/data:ro
+      # Exclude these from mount to avoid conflicts
+      - /app/.venv
+      - /app/__pycache__
+    
+    # Development environment variables
+    environment:
+      DEBUG_MODE: "true"
+      STREAMLIT_SERVER_RUN_ON_SAVE: "true"
+    
+    # Override command for development mode
+    command: >
+      sh -c "uv sync &&
+             uv run streamlit run main.py
+             --server.address 0.0.0.0
+             --server.port 8501
+             --server.runOnSave true
+             --server.fileWatcherType auto"
+    
+    # No restart in dev (easier to debug crashes)
+    restart: "no"
+
