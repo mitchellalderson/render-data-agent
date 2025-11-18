@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS user_signups (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert sample data
+-- Insert sample data (skip if already exists based on email)
 INSERT INTO user_signups (full_name, email, company_name, industry, company_size, role, use_case, revenue_range, location, metadata) VALUES
 ('Sarah Mitchell', 'sarah.mitchell@techcorp.io', 'TechFlow Solutions', 'Technology', '200-1000', 'VP of Engineering', 'Building scalable cloud infrastructure for our growing platform', '$10M-$50M', 'San Francisco Bay Area', '{"trial_plan": "enterprise", "signup_source": "website"}'),
 ('Michael Chen', 'michael.chen@datastream.com', 'DataStream Analytics', 'Technology', '200-1000', 'CTO', 'Need a data platform for customer analytics and insights', '$10M-$50M', 'New York City', '{"trial_plan": "enterprise", "signup_source": "website"}'),
@@ -39,14 +39,15 @@ INSERT INTO user_signups (full_name, email, company_name, industry, company_size
 ('Sophia Johnson', 'sophia.j@observability.io', 'Observability.io', 'Technology', '200-1000', 'Chief Product Officer', 'Making distributed systems more observable and debuggable', '$50M+', 'San Francisco', '{"trial_plan": "enterprise", "signup_source": "website"}'),
 ('Andrew Miller', 'amiller@containertech.com', 'Container Tech', 'Technology', '200-1000', 'VP of Engineering', 'Kubernetes orchestration and container management', '$10M-$50M', 'Remote - Denver', '{"trial_plan": "enterprise", "signup_source": "website"}'),
 ('Olivia Davis', 'olivia.davis@eventstream.io', 'EventStream Systems', 'Technology', '50-200', 'Director of Engineering', 'Event-driven architecture and messaging systems', '$10M-$50M', 'Seattle', '{"trial_plan": "professional", "signup_source": "website"}'),
-('Marcus Robinson', 'mrobinson@performanceai.com', 'Performance AI', 'Artificial Intelligence', '200-1000', 'Head of Infrastructure', 'Performance optimization for AI/ML workloads', '$10M-$50M', 'Austin', '{"trial_plan": "professional", "signup_source": "referral"}');
+('Marcus Robinson', 'mrobinson@performanceai.com', 'Performance AI', 'Artificial Intelligence', '200-1000', 'Head of Infrastructure', 'Performance optimization for AI/ML workloads', '$10M-$50M', 'Austin', '{"trial_plan": "professional", "signup_source": "referral"}')
+ON CONFLICT (email) DO NOTHING;
 
--- Create indexes for better query performance
-CREATE INDEX idx_user_signups_industry ON user_signups(industry);
-CREATE INDEX idx_user_signups_company_size ON user_signups(company_size);
-CREATE INDEX idx_user_signups_signup_date ON user_signups(signup_date);
-CREATE INDEX idx_user_signups_revenue_range ON user_signups(revenue_range);
-CREATE INDEX idx_user_signups_role ON user_signups(role);
+-- Create indexes for better query performance (skip if already exist)
+CREATE INDEX IF NOT EXISTS idx_user_signups_industry ON user_signups(industry);
+CREATE INDEX IF NOT EXISTS idx_user_signups_company_size ON user_signups(company_size);
+CREATE INDEX IF NOT EXISTS idx_user_signups_signup_date ON user_signups(signup_date);
+CREATE INDEX IF NOT EXISTS idx_user_signups_revenue_range ON user_signups(revenue_range);
+CREATE INDEX IF NOT EXISTS idx_user_signups_role ON user_signups(role);
 
 -- Verify the data
 SELECT COUNT(*) as total_signups FROM user_signups;

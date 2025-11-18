@@ -33,6 +33,8 @@ This project is pre-configured for easy deployment to [Render](https://render.co
 2. **Create a New Blueprint** in Render Dashboard
 3. **Provide your API keys** (OPENAI_API_KEY required)
 4. **Click Deploy** - Render handles the rest!
+   - Database migrations run automatically before each deployment
+   - No manual setup required!
 
 📖 **[Complete Deployment Guide →](./RENDER_DEPLOY.md)**
 

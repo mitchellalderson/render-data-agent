@@ -17,6 +17,9 @@ services:
     # Use the root Dockerfile
     dockerfilePath: ./Dockerfile
     
+    # Run database migrations before starting the app
+    preDeployCommand: "uv run python migrate.py"
+    
     # Environment variables for the Streamlit app
     envVars:
       # Database configuration (connects to the database above)
