@@ -7,6 +7,7 @@ import plotly.express as px
 from typing import List, Dict, Optional
 
 from src.segmentation import Segment
+from src.utils import escape_markdown
 
 
 def render_segment_overview(segments: List[Segment]) -> None:
@@ -98,7 +99,7 @@ def render_segment_details(segments: List[Segment]) -> None:
             
             st.markdown("**Common Characteristics:**")
             for char in segment.characteristics:
-                st.markdown(f"- {char}")
+                st.markdown(f"- {escape_markdown(char)}")
 
 
 def render_customer_comparison(comparison_df: pd.DataFrame) -> None:

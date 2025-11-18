@@ -132,6 +132,29 @@ def calculate_similarity_score(
     return 0.0
 
 
+def escape_markdown(text: str) -> str:
+    """
+    Escape special characters in text to prevent LaTeX/markdown rendering issues.
+    
+    In Streamlit markdown, $ symbols are treated as LaTeX math delimiters.
+    This function escapes them so they render as literal dollar signs.
+    
+    Args:
+        text: Text to escape
+        
+    Returns:
+        Escaped text safe for st.markdown()
+    """
+    if not isinstance(text, str):
+        text = str(text)
+    
+    # Escape dollar signs to prevent LaTeX math rendering
+    # Use \$ instead of $ so it renders as a literal dollar sign
+    text = text.replace('$', r'\$')
+    
+    return text
+
+
 def get_sample_icp_criteria() -> Dict[str, Any]:
     """
     Get sample ICP criteria for testing/demonstration.

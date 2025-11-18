@@ -8,6 +8,7 @@ import json
 from typing import Dict, List, Optional
 
 from src.icp_analyzer import ICPAnalysisResult, ICPMatch
+from src.utils import escape_markdown
 
 
 def render_analysis_configuration() -> Dict[str, any]:
@@ -248,10 +249,10 @@ def render_top_matches(matches: List[ICPMatch], top_n: int = 10) -> None:
                         # Parse attribute to show more detail
                         if ":" in attr:
                             # Attribute already has detail (e.g., "Industry: Technology")
-                            st.success(f"{idx}. {attr}")
+                            st.success(f"{idx}. {escape_markdown(attr)}")
                         else:
                             # Simple attribute name
-                            st.success(f"{idx}. {attr}")
+                            st.success(f"{idx}. {escape_markdown(attr)}")
                 else:
                     st.markdown("**✅ Matching Attributes:**")
                     st.caption("*No specific matches identified*")
@@ -263,10 +264,10 @@ def render_top_matches(matches: List[ICPMatch], top_n: int = 10) -> None:
                         # Parse gap to show more detail
                         if ":" in gap:
                             # Gap already has detail (e.g., "Missing: Team size info")
-                            st.warning(f"{idx}. {gap}")
+                            st.warning(f"{idx}. {escape_markdown(gap)}")
                         else:
                             # Simple gap name
-                            st.warning(f"{idx}. Missing or weak: {gap}")
+                            st.warning(f"{idx}. Missing or weak: {escape_markdown(gap)}")
                 else:
                     st.markdown("**⚠️ Gaps / Missing:**")
                     st.caption("*No significant gaps identified*")
@@ -302,12 +303,12 @@ def render_patterns(patterns: Dict[str, any]) -> None:
         if patterns.get("common_attributes"):
             st.markdown("**Common Attributes:**")
             for attr in patterns["common_attributes"]:
-                st.markdown(f"- {attr}")
+                st.markdown(f"- {escape_markdown(attr)}")
         
         if patterns.get("key_indicators"):
             st.markdown("**Key Success Indicators:**")
             for indicator in patterns["key_indicators"]:
-                st.markdown(f"- {indicator}")
+                st.markdown(f"- {escape_markdown(indicator)}")
 
 
 def render_recommendations(recommendations: List[str]) -> None:
@@ -462,7 +463,7 @@ def render_full_results_table(df: pd.DataFrame) -> None:
                     if row["Matching Attributes"]:
                         attrs = row["Matching Attributes"].split(", ")
                         for i, attr in enumerate(attrs, 1):
-                            st.markdown(f"{i}. {attr}")
+                            st.markdown(f"{i}. {escape_markdown(attr)}")
                     else:
                         st.caption("*None specified*")
                 
@@ -471,7 +472,7 @@ def render_full_results_table(df: pd.DataFrame) -> None:
                     if row["Gaps"]:
                         gaps = row["Gaps"].split(", ")
                         for i, gap in enumerate(gaps, 1):
-                            st.markdown(f"{i}. {gap}")
+                            st.markdown(f"{i}. {escape_markdown(gap)}")
                     else:
                         st.caption("*None specified*")
                 
