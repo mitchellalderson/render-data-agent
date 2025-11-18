@@ -2,7 +2,7 @@ databases:
   # PostgreSQL Database
   - name: icp-analysis-db
     databaseName: render_data
-    plan: starter
+    plan: free
     region: oregon
     ipAllowList: []  # Allow connections from all Render services
 
