@@ -524,9 +524,9 @@ async def process_chat_query(
         
         context = "\n".join(context_parts)
         logger.debug(f"Built context with {len(context)} characters")
-    
-    # Build system prompt
-    system_prompt = """You are a data analysis assistant specializing in ICP (Ideal Customer Profile) analysis.
+        
+        # Build system prompt
+        system_prompt = """You are a data analysis assistant specializing in ICP (Ideal Customer Profile) analysis.
 
 Your job is to:
 1. Answer questions about enrichment data and signup data
@@ -577,8 +577,8 @@ Return a JSON object with this structure:
 
 Note: table, charts, and sql are optional. Only include them when relevant."""
 
-    # Build user prompt with data context
-    user_prompt = f"""# User Question
+        # Build user prompt with data context
+        user_prompt = f"""# User Question
 {query}
 
 # Available Data Context
@@ -586,50 +586,54 @@ Note: table, charts, and sql are optional. Only include them when relevant."""
 
 Please analyze the data and answer the user's question. If this is a follow-up question, use the conversation history to understand the context. Provide insights, tables, or charts as appropriate."""
 
-    # Prepare conversation history for LLM (exclude the current message which is already in the prompt)
-    # Include last 10 messages (5 exchanges) for context, but exclude the current query
-    llm_conversation_history = []
-    if len(conversation_history) > 1:
-        # Get last messages before the current one (which was just added)
-        for msg in conversation_history[:-1]:  # Exclude the last message (current query)
-            llm_conversation_history.append({
-                "role": msg.get("role", "user"),
-                "content": msg.get("content", "")
-            })
-        # Limit to last 10 messages to avoid token limits
-        llm_conversation_history = llm_conversation_history[-10:]
+        # Prepare conversation history for LLM (exclude the current message which is already in the prompt)
+        # Include last 10 messages (5 exchanges) for context, but exclude the current query
+        llm_conversation_history = []
+        if len(conversation_history) > 1:
+            # Get last messages before the current one (which was just added)
+            for msg in conversation_history[:-1]:  # Exclude the last message (current query)
+                llm_conversation_history.append({
+                    "role": msg.get("role", "user"),
+                    "content": msg.get("content", "")
+                })
+            # Limit to last 10 messages to avoid token limits
+            llm_conversation_history = llm_conversation_history[-10:]
 
-    # Get LLM response with conversation history
-    try:
-        logger.debug(f"Calling LLM with {len(llm_conversation_history)} history messages")
-        logger.debug(f"Prompt length: {len(user_prompt)} characters")
-        
-        response_json = llm_client.generate_json(
-            prompt=user_prompt,
-            system_prompt=system_prompt,
-            temperature=0.7,
-            conversation_history=llm_conversation_history if llm_conversation_history else None
-        )
-        
-        logger.debug(f"LLM response received: {len(str(response_json))} characters")
-        
-        # Parse and return
-        response = ChatResponse(
-            content=response_json.get("content", "I couldn't generate a response. Please try rephrasing your question."),
-            table=response_json.get("table"),
-            charts=response_json.get("charts"),
-            sql=response_json.get("sql")
-        )
-        
-        logger.debug("Successfully parsed LLM response")
-        return response
+        # Get LLM response with conversation history
+        try:
+            logger.debug(f"Calling LLM with {len(llm_conversation_history)} history messages")
+            logger.debug(f"Prompt length: {len(user_prompt)} characters")
+            
+            response_json = llm_client.generate_json(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.7,
+                conversation_history=llm_conversation_history if llm_conversation_history else None
+            )
+            
+            logger.debug(f"LLM response received: {len(str(response_json))} characters")
+            
+            # Parse and return
+            response = ChatResponse(
+                content=response_json.get("content", "I couldn't generate a response. Please try rephrasing your question."),
+                table=response_json.get("table"),
+                charts=response_json.get("charts"),
+                sql=response_json.get("sql")
+            )
+            
+            logger.debug("Successfully parsed LLM response")
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error in LLM call: {str(e)}", exc_info=True)
+            # Fallback to simple response
+            return ChatResponse(
+                content=f"I encountered an error analyzing your question: {str(e)}. Please try rephrasing or asking something else."
+            )
         
     except Exception as e:
-        logger.error(f"Error in LLM call: {str(e)}", exc_info=True)
-        # Fallback to simple response
-        return ChatResponse(
-            content=f"I encountered an error analyzing your question: {str(e)}. Please try rephrasing or asking something else."
-        )
+        logger.error(f"Error in process_chat_query: {str(e)}", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
