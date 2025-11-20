@@ -431,6 +431,14 @@ Guidelines:
 - Be honest about data limitations
 - If the user refers to something mentioned earlier (like "those customers" or "the top 5"), use the conversation history to understand what they're referring to
 
+Formatting:
+- Use markdown formatting to make your responses more readable
+- Use **bold** for emphasis on key findings or numbers
+- Use bullet points (-) or numbered lists (1.) to break up information
+- Use headings (##) to organize different sections when appropriate
+- Break up long paragraphs into shorter, digestible chunks
+- Use line breaks between paragraphs for better readability
+
 Response Format:
 Return a JSON object with this structure:
 {

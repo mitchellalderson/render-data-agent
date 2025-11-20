@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import ReactMarkdown from "react-markdown";
 import {
   Database,
   Upload,
@@ -338,8 +339,46 @@ function MessagesList({
               )}
             </div>
             <div className="flex-1 space-y-3">
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 whitespace-pre-wrap">
-                {m.content}
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100">
+                <ReactMarkdown
+                  components={{
+                    p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+                    h1: ({ children }) => <h1 className="text-lg font-semibold mb-2 mt-4 first:mt-0 text-white">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0 text-white">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-sm font-semibold mb-1.5 mt-2 first:mt-0 text-white">{children}</h3>,
+                    ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1 ml-2">{children}</ul>,
+                    ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-2">{children}</ol>,
+                    li: ({ children }) => <li className="text-zinc-200 leading-relaxed">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                    em: ({ children }) => <em className="italic text-zinc-200">{children}</em>,
+                    code: ({ children, className }) => {
+                      const isInline = !className;
+                      return isInline ? (
+                        <code className="bg-zinc-900 px-1.5 py-0.5 rounded text-xs text-purple-300 font-mono border border-zinc-800">{children}</code>
+                      ) : (
+                        <code className={className}>{children}</code>
+                      );
+                    },
+                    pre: ({ children }) => (
+                      <pre className="bg-zinc-900 p-3 rounded-lg overflow-x-auto mb-3 border border-zinc-800">
+                        {children}
+                      </pre>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className="border-l-4 border-purple-500/50 pl-3 ml-2 italic text-zinc-300 mb-3">
+                        {children}
+                      </blockquote>
+                    ),
+                    hr: () => <hr className="my-4 border-zinc-800" />,
+                    a: ({ children, href }) => (
+                      <a href={href} className="text-purple-400 hover:text-purple-300 underline" target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {m.content}
+                </ReactMarkdown>
               </div>
 
               {m.table && (
