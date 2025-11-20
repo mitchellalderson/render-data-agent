@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Body
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
@@ -36,7 +36,7 @@ app = FastAPI(
 
 # CORS middleware - allow frontend to connect
 # In development, allow all localhost origins
-# In production, replace with specific frontend URL
+# In production, use FRONTEND_URL or allow Render origins
 allowed_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -45,17 +45,37 @@ allowed_origins = [
 ]
 
 # Add production origin if set
-if os.getenv("FRONTEND_URL"):
-    allowed_origins.append(os.getenv("FRONTEND_URL"))
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+    # Also add without trailing slash if present
+    if frontend_url.endswith("/"):
+        allowed_origins.append(frontend_url.rstrip("/"))
+    # Also add with trailing slash if not present
+    else:
+        allowed_origins.append(f"{frontend_url}/")
+
+# Allow Render preview URLs (for preview deployments)
+# Format: https://icp-analysis-frontend-*.onrender.com
+render_origin = os.getenv("RENDER_EXTERNAL_URL")
+if render_origin:
+    allowed_origins.append(render_origin)
 
 # For development, allow all origins if DEBUG_MODE is set
 # WARNING: Only use in development, not production!
 debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
+# In production on Render, allow all Render origins as fallback
+# This ensures CORS works even if FRONTEND_URL isn't set
+# (Ideally FRONTEND_URL should be set explicitly for better security)
+is_render = os.getenv("RENDER") is not None
+
 app.add_middleware(
     CORSMiddleware,
+    # Use regex to allow all Render origins if on Render platform
+    allow_origin_regex=r"https://.*\.onrender\.com" if (is_render and not debug_mode) else None,
     allow_origins=["*"] if debug_mode else allowed_origins,
-    allow_credentials=not debug_mode,  # Can't use credentials with wildcard
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -64,15 +84,28 @@ app.add_middleware(
 
 # Explicit OPTIONS handler for all routes (helps with some browsers)
 @app.options("/{full_path:path}")
-async def options_handler(full_path: str):
+async def options_handler(full_path: str, request: Request):
     """Handle CORS preflight requests explicitly."""
     from fastapi.responses import Response
+    origin = request.headers.get("origin")
+    
+    # Determine allowed origin
+    if debug_mode:
+        allow_origin = "*"
+    elif origin and (origin in allowed_origins or (is_render and ".onrender.com" in origin)):
+        allow_origin = origin
+    elif allowed_origins:
+        allow_origin = allowed_origins[0]
+    else:
+        allow_origin = "*"
+    
     return Response(
         status_code=200,
         headers={
-            "Access-Control-Allow-Origin": allowed_origins[0] if allowed_origins and not debug_mode else "*",
+            "Access-Control-Allow-Origin": allow_origin,
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
             "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
             "Access-Control-Max-Age": "3600",
         }
     )

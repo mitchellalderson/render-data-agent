@@ -603,8 +603,30 @@ export default function DataAnalystAgentPage() {
     databaseConnected: false
   });
 
-  // API base URL - use environment variable or default to localhost
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  // API base URL - use environment variable or construct from current host
+  // On Render, if NEXT_PUBLIC_API_URL isn't set, try to construct it from the current hostname
+  const getApiBase = () => {
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
+    
+    // If we're on Render and the env var isn't set, try to construct the backend URL
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+      // If on Render (onrender.com), try to construct backend URL
+      if (hostname.includes("onrender.com")) {
+        // Replace frontend service name with backend service name
+        // e.g., icp-analysis-frontend.onrender.com -> icp-analysis-api.onrender.com
+        const backendHostname = hostname.replace("frontend", "api").replace("icp-analysis-frontend", "icp-analysis-api");
+        return `https://${backendHostname}`;
+      }
+    }
+    
+    // Fallback to localhost for local development
+    return "http://localhost:8000";
+  };
+  
+  const API_BASE = getApiBase();
 
   // Fetch data status on mount and periodically
   React.useEffect(() => {
