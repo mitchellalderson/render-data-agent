@@ -7,9 +7,9 @@ databases:
     ipAllowList: []  # Allow connections from all Render services
 
 services:
-  # Streamlit Web Application
+  # FastAPI Backend API
   - type: web
-    name: icp-analysis-dashboard
+    name: icp-analysis-api
     runtime: docker
     plan: starter
     region: oregon
@@ -20,7 +20,7 @@ services:
     # Run database migrations before starting the app
     preDeployCommand: "uv run python migrate.py"
     
-    # Environment variables for the Streamlit app
+    # Environment variables for the FastAPI backend
     envVars:
       # Database configuration (connects to the database above)
       - key: POSTGRES_HOST
@@ -68,8 +68,8 @@ services:
       - key: NODE_ENV
         value: production
     
-    # Health check endpoint (Streamlit health endpoint)
-    healthCheckPath: /_stcore/health
+    # Health check endpoint (FastAPI health endpoint)
+    healthCheckPath: /api/status
     
     # Auto-deploy from main branch
     autoDeploy: true

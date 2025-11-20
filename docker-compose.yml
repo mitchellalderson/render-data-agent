@@ -1,8 +1,8 @@
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (optional - for signup data comparison)
   postgres:
     image: postgres:15-alpine
-    container_name: render-data-postgres
+    container_name: icp-agent-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-render_data}
@@ -19,21 +19,21 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - render-data-network
+      - icp-agent-network
 
-  # Streamlit Application
-  app:
+  # FastAPI Backend
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: render-data-app
+    container_name: icp-agent-backend
     restart: unless-stopped
     env_file:
       - .env
     ports:
-      - "8501:8501"
+      - "8000:8000"
     environment:
-      # Database configuration
+      # Database configuration (optional)
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-render_data}
@@ -41,36 +41,57 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-render_data}
       
-      # LLM configuration (loaded from .env file)
+      # LLM configuration
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_MODEL: ${LLM_MODEL:-gpt-4-turbo-preview}
       
-      # App configuration
-      APP_TITLE: ${APP_TITLE:-ICP Analysis Dashboard}
-      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-50}
-      DEBUG_MODE: ${DEBUG_MODE:-false}
+      # API configuration
+      PORT: 8000
     volumes:
-      # Mount data directory for CSV uploads
       - ./data:/app/data:ro
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - render-data-network
+      - icp-agent-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: icp-agent-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      # For external access, use:
+      # NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - icp-agent-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:
     driver: local
 
 networks:
-  render-data-network:
+  icp-agent-network:
     driver: bridge
 

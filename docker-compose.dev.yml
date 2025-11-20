@@ -1,20 +1,19 @@
 # Development Docker Compose Configuration
 # Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
-version: '3.8'
-
 services:
-  app:
+  backend:
     # Override build for faster rebuilds
     build:
       context: .
       dockerfile: Dockerfile
       cache_from:
-        - render-data-app:latest
+        - icp-agent-backend:latest
     
     # Mount source code for hot-reload
     volumes:
-      - ./:/app
+      - ./src:/app/src
+      - ./api.py:/app/api.py
       - ./data:/app/data:ro
       # Exclude these from mount to avoid conflicts
       - /app/.venv
@@ -23,17 +22,39 @@ services:
     # Development environment variables
     environment:
       DEBUG_MODE: "true"
-      STREAMLIT_SERVER_RUN_ON_SAVE: "true"
     
-    # Override command for development mode
+    # Override command for development mode with auto-reload
     command: >
       sh -c "uv sync &&
-             uv run streamlit run main.py
-             --server.address 0.0.0.0
-             --server.port 8501
-             --server.runOnSave true
-             --server.fileWatcherType auto"
+             uv run uvicorn api:app
+             --host 0.0.0.0
+             --port 8000
+             --reload
+             --log-level debug"
     
     # No restart in dev (easier to debug crashes)
+    restart: "no"
+
+  frontend:
+    # Development build - don't use production optimizations
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: deps  # Only build deps stage
+    
+    # Mount source code for hot-reload
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    
+    # Override command for development mode
+    command: npm run dev
+    
+    # Development environment - use localhost backend for browser access
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    
+    # No restart in dev
     restart: "no"
 

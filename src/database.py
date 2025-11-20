@@ -5,9 +5,11 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
-import streamlit as st
+import logging
 
 from src.config import config
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseConnection:
@@ -54,7 +56,7 @@ class DatabaseConnection:
                 result = conn.execute(text(query))
                 return [row[0] for row in result]
         except SQLAlchemyError as e:
-            st.error(f"Error fetching tables: {str(e)}")
+            logger.error(f"Error fetching tables: {str(e)}")
             return []
     
     def get_table_info(self, table_name: str) -> pd.DataFrame:
@@ -84,7 +86,7 @@ class DatabaseConnection:
                 data = [list(row) for row in result]
                 return pd.DataFrame(data, columns=columns)
         except SQLAlchemyError as e:
-            st.error(f"Error fetching table info: {str(e)}")
+            logger.error(f"Error fetching table info: {str(e)}")
             return pd.DataFrame()
     
     def query_signups(
@@ -125,7 +127,7 @@ class DatabaseConnection:
             
             return pd.read_sql(text(query), self.engine, params=params)
         except SQLAlchemyError as e:
-            st.error(f"Error querying signups: {str(e)}")
+            logger.error(f"Error querying signups: {str(e)}")
             return pd.DataFrame()
     
     def execute_custom_query(self, query: str) -> pd.DataFrame:
@@ -141,7 +143,7 @@ class DatabaseConnection:
         try:
             return pd.read_sql(text(query), self.engine)
         except SQLAlchemyError as e:
-            st.error(f"Error executing query: {str(e)}")
+            logger.error(f"Error executing query: {str(e)}")
             return pd.DataFrame()
     
     def get_row_count(self, table_name: str) -> int:
@@ -152,13 +154,17 @@ class DatabaseConnection:
                 result = conn.execute(text(query))
                 return result.fetchone()[0]
         except SQLAlchemyError as e:
-            st.error(f"Error counting rows: {str(e)}")
+            logger.error(f"Error counting rows: {str(e)}")
             return 0
 
 
-# Global database connection instance
-@st.cache_resource
+# Global database connection instance (cached at module level)
+_db_connection: Optional[DatabaseConnection] = None
+
 def get_database_connection() -> DatabaseConnection:
     """Get a cached database connection instance."""
-    return DatabaseConnection()
+    global _db_connection
+    if _db_connection is None:
+        _db_connection = DatabaseConnection()
+    return _db_connection
 

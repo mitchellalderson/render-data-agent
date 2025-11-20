@@ -32,7 +32,7 @@ exit_code=$?
 if [ $exit_code -eq 0 ]; then
     echo ""
     echo "✅ Migration completed successfully!"
-    echo "   You can now start the application with: uv run streamlit run main.py"
+    echo "   You can now start the application with: ./run_api.sh"
 else
     echo ""
     echo "❌ Migration failed with exit code $exit_code"

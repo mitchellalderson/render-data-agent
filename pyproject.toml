@@ -1,19 +1,20 @@
 [project]
 name = "render-data-agent"
 version = "0.1.0"
-description = "ICP Analysis Dashboard - Compare user signups with customer data using LLM insights"
+description = "ICP Analysis Chat Agent - Analyze customer data using LLM insights via chat interface"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "streamlit>=1.50.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "psycopg2-binary>=2.9.9",
     "sqlalchemy>=2.0.0",
     "python-dotenv>=1.0.0",
     "openai>=1.0.0",
-    "plotly>=5.18.0",
-    "altair>=5.2.0",
+    "anthropic>=0.18.0",
 ]
 
 [project.optional-dependencies]

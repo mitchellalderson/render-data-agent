@@ -75,9 +75,13 @@ Comprehensive customer data with social media profiles and marketing campaign in
 
 ## Usage in the App
 
-1. **Start the Streamlit app:**
+1. **Start the application:**
    ```bash
-   streamlit run main.py
+   # Backend
+   ./run_api.sh
+   
+   # Frontend (in another terminal)
+   cd frontend && npm run dev
    ```
 
 2. **Load database data:**

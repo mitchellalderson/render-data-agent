@@ -181,7 +181,8 @@ class LLMClient:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: Optional[float] = None
+        temperature: Optional[float] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         Generate JSON response from LLM.
@@ -190,6 +191,7 @@ class LLMClient:
             prompt: User prompt (should ask for JSON)
             system_prompt: System prompt
             temperature: Temperature (lower is better for JSON)
+            conversation_history: Previous conversation messages (list of dicts with 'role' and 'content')
             
         Returns:
             Parsed JSON as dictionary
@@ -200,7 +202,16 @@ class LLMClient:
         if "json" not in prompt.lower():
             prompt += "\n\nRespond with valid JSON only."
         
-        response = self.generate(prompt, system_prompt, temp)
+        # Use conversation history if provided
+        if conversation_history:
+            response = self._generate_with_history(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                conversation_history=conversation_history,
+                temperature=temp
+            )
+        else:
+            response = self.generate(prompt, system_prompt, temp)
         
         # Try to parse JSON from response
         content = response.content.strip()
@@ -224,6 +235,134 @@ class LLMClient:
             if start >= 0 and end > start:
                 return json.loads(content[start:end])
             raise ValueError(f"Failed to parse JSON from LLM response: {e}")
+    
+    def _generate_with_history(
+        self,
+        prompt: str,
+        system_prompt: Optional[str],
+        conversation_history: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: Optional[int] = None
+    ) -> LLMResponse:
+        """
+        Generate response with conversation history.
+        
+        Args:
+            prompt: Current user prompt
+            system_prompt: System prompt
+            conversation_history: Previous conversation messages
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            LLMResponse with generated text
+        """
+        tokens = max_tokens if max_tokens is not None else self.max_tokens
+        
+        if self.provider == "openai":
+            return self._generate_openai_with_history(
+                prompt, system_prompt, conversation_history, temperature, tokens
+            )
+        elif self.provider == "anthropic":
+            return self._generate_anthropic_with_history(
+                prompt, system_prompt, conversation_history, temperature, tokens
+            )
+        else:
+            raise ValueError(f"Unknown provider: {self.provider}")
+    
+    def _generate_openai_with_history(
+        self,
+        prompt: str,
+        system_prompt: Optional[str],
+        conversation_history: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int
+    ) -> LLMResponse:
+        """Generate using OpenAI API with conversation history."""
+        messages = []
+        
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        
+        # Add conversation history (excluding the current prompt)
+        for msg in conversation_history:
+            # Map 'agent' role to 'assistant' for OpenAI
+            role = msg.get("role", "user")
+            if role == "agent":
+                role = "assistant"
+            messages.append({
+                "role": role,
+                "content": msg.get("content", "")
+            })
+        
+        # Add current prompt
+        messages.append({"role": "user", "content": prompt})
+        
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        
+        return LLMResponse(
+            content=response.choices[0].message.content,
+            provider="openai",
+            model=self.model,
+            tokens_used=response.usage.total_tokens if response.usage else None,
+            raw_response=response
+        )
+    
+    def _generate_anthropic_with_history(
+        self,
+        prompt: str,
+        system_prompt: Optional[str],
+        conversation_history: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int
+    ) -> LLMResponse:
+        """Generate using Anthropic API with conversation history."""
+        messages = []
+        
+        # Add conversation history (excluding the current prompt)
+        for msg in conversation_history:
+            # Map 'agent' role to 'assistant' for Anthropic
+            role = msg.get("role", "user")
+            if role == "agent":
+                role = "assistant"
+            messages.append({
+                "role": role,
+                "content": msg.get("content", "")
+            })
+        
+        # Add current prompt
+        messages.append({"role": "user", "content": prompt})
+        
+        kwargs = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": messages
+        }
+        
+        if system_prompt:
+            kwargs["system"] = system_prompt
+        
+        response = self.client.messages.create(**kwargs)
+        
+        # Extract text content
+        content = ""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                content += block.text
+        
+        return LLMResponse(
+            content=content,
+            provider="anthropic",
+            model=self.model,
+            tokens_used=response.usage.input_tokens + response.usage.output_tokens if response.usage else None,
+            raw_response=response
+        )
 
 
 def get_default_client() -> LLMClient:

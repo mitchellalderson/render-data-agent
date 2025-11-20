@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-black text-zinc-100;
+}
+
+/* Render.com-inspired purple accents */
+@layer utilities {
+  .render-purple-gradient {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%);
+  }
+  
+  .render-purple-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+  }
+  
+  .render-purple-border {
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+}
