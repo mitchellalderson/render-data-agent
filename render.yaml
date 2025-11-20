@@ -14,7 +14,7 @@ services:
     plan: starter
     region: oregon
     
-    # Use the root Dockerfile
+    # Use the backend Dockerfile
     dockerfilePath: ./Dockerfile
     
     # Run database migrations before starting the app
@@ -65,11 +65,44 @@ services:
         value: "50"
       - key: DEBUG_MODE
         value: "false"
-      - key: NODE_ENV
-        value: production
+      - key: PORT
+        value: "8000"
+      # Frontend URL for CORS (set this manually in Render dashboard after frontend deploys)
+      # (e.g., https://icp-analysis-frontend.onrender.com)
+      - key: FRONTEND_URL
+        sync: false
     
     # Health check endpoint (FastAPI health endpoint)
     healthCheckPath: /api/status
+    
+    # Auto-deploy from main branch
+    autoDeploy: true
+
+  # Next.js Frontend
+  - type: web
+    name: icp-analysis-frontend
+    runtime: docker
+    plan: starter
+    region: oregon
+    
+    # Use the frontend Dockerfile
+    dockerfilePath: ./Dockerfile.frontend
+    
+    # Environment variables for the Next.js frontend
+    envVars:
+      # Point to the backend API service
+      # Set this manually in Render dashboard to the full backend URL
+      # (e.g., https://icp-analysis-api.onrender.com)
+      # This will be set automatically after first deployment
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+    
+    # Health check endpoint (Next.js default)
+    healthCheckPath: /
     
     # Auto-deploy from main branch
     autoDeploy: true
