@@ -606,8 +606,14 @@ export default function DataAnalystAgentPage() {
   // API base URL - use environment variable or construct from current host
   // On Render, if NEXT_PUBLIC_API_URL isn't set, try to construct it from the current hostname
   const getApiBase = () => {
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
+    let apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    if (apiUrl) {
+      // If it's just a hostname (no protocol), add https://
+      if (!apiUrl.startsWith("http://") && !apiUrl.startsWith("https://")) {
+        apiUrl = `https://${apiUrl}`;
+      }
+      return apiUrl;
     }
     
     // If we're on Render and the env var isn't set, try to construct the backend URL

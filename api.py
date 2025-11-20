@@ -11,12 +11,16 @@ import os
 import json
 import tempfile
 import math
+import logging
+import sys
+import traceback
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
@@ -27,12 +31,45 @@ from src.llm_client import LLMClient, get_default_client
 from src.icp_analyzer import ICPAnalyzer
 from src.data_processing import DataCleaner, SchemaMapper
 
+# Configure logging
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # Initialize FastAPI app
 app = FastAPI(
     title="ICP Analysis Agent API",
     description="Chat-based data analysis agent for ICP matching",
     version="1.0.0"
 )
+
+# Add exception handler for better error logging
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler with detailed logging."""
+    logger.error(
+        f"Unhandled exception: {type(exc).__name__}: {str(exc)}",
+        exc_info=True,
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "query_params": dict(request.query_params),
+        }
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc) if LOG_LEVEL == "DEBUG" else "An internal error occurred"
+        }
+    )
 
 # CORS middleware - allow frontend to connect
 # In development, allow all localhost origins
@@ -47,6 +84,10 @@ allowed_origins = [
 # Add production origin if set
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
+    # If it's just a hostname (no protocol), add https://
+    if not frontend_url.startswith("http://") and not frontend_url.startswith("https://"):
+        frontend_url = f"https://{frontend_url}"
+    
     allowed_origins.append(frontend_url)
     # Also add without trailing slash if present
     if frontend_url.endswith("/"):
@@ -192,6 +233,7 @@ class DataStatus(BaseModel):
 @app.get("/")
 async def root():
     """Health check endpoint."""
+    logger.debug("Health check endpoint called")
     return {
         "status": "healthy",
         "service": "ICP Analysis Agent API",
@@ -204,18 +246,28 @@ async def root():
 @app.get("/api/status")
 async def get_status() -> DataStatus:
     """Get current data status."""
-    db = get_database_connection()
-    db_connected, _ = db.test_connection()
-    
-    return DataStatus(
-        enrichment_loaded=state.enrichment_data is not None,
-        enrichment_rows=len(state.enrichment_data) if state.enrichment_data is not None else 0,
-        enrichment_columns=len(state.enrichment_data.columns) if state.enrichment_data is not None else 0,
-        signup_loaded=state.signup_data is not None,
-        signup_rows=len(state.signup_data) if state.signup_data is not None else 0,
-        signup_columns=len(state.signup_data.columns) if state.signup_data is not None else 0,
-        database_connected=db_connected
-    )
+    logger.debug("Status endpoint called")
+    try:
+        db = get_database_connection()
+        db_connected, error_msg = db.test_connection()
+        
+        if not db_connected:
+            logger.warning(f"Database connection failed: {error_msg}")
+        
+        status = DataStatus(
+            enrichment_loaded=state.enrichment_data is not None,
+            enrichment_rows=len(state.enrichment_data) if state.enrichment_data is not None else 0,
+            enrichment_columns=len(state.enrichment_data.columns) if state.enrichment_data is not None else 0,
+            signup_loaded=state.signup_data is not None,
+            signup_rows=len(state.signup_data) if state.signup_data is not None else 0,
+            signup_columns=len(state.signup_data.columns) if state.signup_data is not None else 0,
+            database_connected=db_connected
+        )
+        logger.debug(f"Status: enrichment_loaded={status.enrichment_loaded}, db_connected={db_connected}")
+        return status
+    except Exception as e:
+        logger.error(f"Error getting status: {str(e)}", exc_info=True)
+        raise
 
 
 @app.post("/api/upload")
@@ -229,12 +281,17 @@ async def upload_enrichment_data(file: UploadFile = File(...)):
     Returns:
         Success message with file info
     """
+    logger.info(f"Upload request received for file: {file.filename}")
+    
     if not file.filename.endswith('.csv'):
+        logger.warning(f"Invalid file type attempted: {file.filename}")
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
     try:
         # Read CSV content
+        logger.debug(f"Reading file content: {file.filename}")
         content = await file.read()
+        logger.debug(f"File size: {len(content)} bytes")
         
         # Save to temporary file
         with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.csv') as tmp:
@@ -242,7 +299,9 @@ async def upload_enrichment_data(file: UploadFile = File(...)):
             tmp_path = tmp.name
         
         # Load into pandas
+        logger.debug(f"Loading CSV into pandas from: {tmp_path}")
         df = pd.read_csv(tmp_path)
+        logger.info(f"Loaded CSV with {len(df)} rows and {len(df.columns)} columns")
         
         # Clean up temp file
         os.unlink(tmp_path)
@@ -267,6 +326,7 @@ async def upload_enrichment_data(file: UploadFile = File(...)):
             "sample": sanitized_sample
         }
         
+        logger.info(f"Successfully processed upload: {file.filename}")
         return {
             "status": "success",
             "message": f"Successfully uploaded {file.filename}",
@@ -274,6 +334,7 @@ async def upload_enrichment_data(file: UploadFile = File(...)):
         }
         
     except Exception as e:
+        logger.error(f"Error processing file upload: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
 
 
@@ -288,28 +349,40 @@ async def chat(message: ChatMessage) -> ChatResponse:
     Returns:
         Chat response with analysis results
     """
+    logger.info(f"Chat request received: {message.message[:100]}...")
+    
     try:
         # Initialize LLM client if not already done
         if state.llm_client is None:
+            logger.info("Initializing LLM client")
             state.llm_client = get_default_client()
+            logger.info(f"LLM client initialized: {state.llm_client.provider}")
         
         # Check if data is loaded
         if state.enrichment_data is None:
+            logger.warning("Chat request received but no enrichment data loaded")
             return ChatResponse(
                 content="Please upload an enrichment CSV file first. Click the upload button to get started."
             )
         
         # Load signup data from database if not already loaded
         if state.signup_data is None:
+            logger.debug("Loading signup data from database")
             db = get_database_connection()
-            success, _ = db.test_connection()
+            success, error_msg = db.test_connection()
             
             if success:
                 tables = db.get_tables()
                 if tables:
                     # Use first table for now (could make this configurable)
                     table_name = tables[0]
+                    logger.debug(f"Querying signups from table: {table_name}")
                     state.signup_data = db.query_signups(table_name, limit=1000)
+                    logger.info(f"Loaded {len(state.signup_data)} signup records")
+                else:
+                    logger.warning("No tables found in database")
+            else:
+                logger.warning(f"Database connection failed: {error_msg}")
         
         # Add message to conversation history
         state.conversation_history.append({
@@ -319,6 +392,7 @@ async def chat(message: ChatMessage) -> ChatResponse:
         })
         
         # Process the query
+        logger.debug("Processing chat query with LLM")
         response = await process_chat_query(
             query=message.message,
             enrichment_data=state.enrichment_data,
@@ -334,9 +408,11 @@ async def chat(message: ChatMessage) -> ChatResponse:
             "timestamp": datetime.now().isoformat()
         })
         
+        logger.info("Chat query processed successfully")
         return response
         
     except Exception as e:
+        logger.error(f"Error processing chat message: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process chat message: {str(e)}")
 
 
@@ -394,6 +470,7 @@ async def run_icp_analysis():
         }
         
     except Exception as e:
+        logger.error(f"Error in ICP analysis: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
@@ -426,23 +503,27 @@ async def process_chat_query(
     Returns:
         ChatResponse with analysis
     """
-    # Build context for LLM
-    context_parts = []
+    logger.debug(f"Processing query: {query[:100]}...")
     
-    # Add data summaries
-    context_parts.append("## Available Data\n")
-    context_parts.append(f"### Enrichment Data")
-    context_parts.append(f"- Rows: {len(enrichment_data)}")
-    context_parts.append(f"- Columns: {', '.join(enrichment_data.columns)}")
-    context_parts.append(f"- Sample:\n```\n{enrichment_data.head(3).to_string()}\n```\n")
-    
-    if signup_data is not None:
-        context_parts.append(f"### Signup Data")
-        context_parts.append(f"- Rows: {len(signup_data)}")
-        context_parts.append(f"- Columns: {', '.join(signup_data.columns)}")
-        context_parts.append(f"- Sample:\n```\n{signup_data.head(3).to_string()}\n```\n")
-    
-    context = "\n".join(context_parts)
+    try:
+        # Build context for LLM
+        context_parts = []
+        
+        # Add data summaries
+        context_parts.append("## Available Data\n")
+        context_parts.append(f"### Enrichment Data")
+        context_parts.append(f"- Rows: {len(enrichment_data)}")
+        context_parts.append(f"- Columns: {', '.join(enrichment_data.columns)}")
+        context_parts.append(f"- Sample:\n```\n{enrichment_data.head(3).to_string()}\n```\n")
+        
+        if signup_data is not None:
+            context_parts.append(f"### Signup Data")
+            context_parts.append(f"- Rows: {len(signup_data)}")
+            context_parts.append(f"- Columns: {', '.join(signup_data.columns)}")
+            context_parts.append(f"- Sample:\n```\n{signup_data.head(3).to_string()}\n```\n")
+        
+        context = "\n".join(context_parts)
+        logger.debug(f"Built context with {len(context)} characters")
     
     # Build system prompt
     system_prompt = """You are a data analysis assistant specializing in ICP (Ideal Customer Profile) analysis.
@@ -520,6 +601,9 @@ Please analyze the data and answer the user's question. If this is a follow-up q
 
     # Get LLM response with conversation history
     try:
+        logger.debug(f"Calling LLM with {len(llm_conversation_history)} history messages")
+        logger.debug(f"Prompt length: {len(user_prompt)} characters")
+        
         response_json = llm_client.generate_json(
             prompt=user_prompt,
             system_prompt=system_prompt,
@@ -527,15 +611,21 @@ Please analyze the data and answer the user's question. If this is a follow-up q
             conversation_history=llm_conversation_history if llm_conversation_history else None
         )
         
+        logger.debug(f"LLM response received: {len(str(response_json))} characters")
+        
         # Parse and return
-        return ChatResponse(
+        response = ChatResponse(
             content=response_json.get("content", "I couldn't generate a response. Please try rephrasing your question."),
             table=response_json.get("table"),
             charts=response_json.get("charts"),
             sql=response_json.get("sql")
         )
         
+        logger.debug("Successfully parsed LLM response")
+        return response
+        
     except Exception as e:
+        logger.error(f"Error in LLM call: {str(e)}", exc_info=True)
         # Fallback to simple response
         return ChatResponse(
             content=f"I encountered an error analyzing your question: {str(e)}. Please try rephrasing or asking something else."
