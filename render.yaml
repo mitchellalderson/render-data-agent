@@ -1,5 +1,5 @@
 projects:
-  - name: render-voice-agent-example
+  - name: render-data-agent-example
     environments:
       - name: production
         databases:
