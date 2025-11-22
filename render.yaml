@@ -1,118 +1,120 @@
-databases:
-  # PostgreSQL Database
-  - name: icp-analysis-db
-    databaseName: render_data
-    plan: free
-    region: oregon
-    ipAllowList: []  # Allow connections from all Render services
+projects:
+  - name: render-voice-agent-example
+    environments:
+      - name: production
+        databases:
+          # PostgreSQL Database
+          - name: icp-analysis-db
+            databaseName: render_data
+            plan: free
+            region: oregon
+            ipAllowList: []  # Allow connections from all Render services
 
-services:
-  # FastAPI Backend API
-  - type: web
-    name: icp-analysis-api
-    runtime: docker
-    plan: starter
-    region: oregon
-    
-    # Use the backend Dockerfile
-    dockerfilePath: ./Dockerfile
-    
-    # Run database migrations before starting the app
-    preDeployCommand: "uv run python migrate.py"
-    
-    # Environment variables for the FastAPI backend
-    envVars:
-      # Database configuration (connects to the database above)
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: icp-analysis-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: icp-analysis-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: icp-analysis-db
-          property: database
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: icp-analysis-db
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: icp-analysis-db
-          property: password
-      - key: DATABASE_URL
-        fromDatabase:
-          name: icp-analysis-db
-          property: connectionString
-      
-      # LLM API Configuration
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: LLM_PROVIDER
-        value: openai
-      - key: LLM_MODEL
-        value: gpt-4-turbo-preview
-      
-      # App Configuration
-      - key: APP_TITLE
-        value: ICP Analysis Dashboard
-      - key: MAX_UPLOAD_SIZE_MB
-        value: "50"
-      - key: DEBUG_MODE
-        value: "false"
-      - key: PORT
-        value: "8000"
-      # Logging Configuration
-      # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-      # Set to DEBUG for detailed troubleshooting
-      - key: LOG_LEVEL
-        value: INFO
-      # Frontend URL for CORS - reference the frontend service
-      - key: FRONTEND_URL
-        fromService:
-          name: icp-analysis-frontend
-          type: web
-          property: host
-    
-    # Health check endpoint (FastAPI health endpoint)
-    healthCheckPath: /api/status
-    
-    # Auto-deploy from main branch
-    autoDeploy: true
+        services:
+          # FastAPI Backend API
+          - type: web
+            name: icp-analysis-api
+            runtime: docker
+            plan: starter
+            region: oregon
+            
+            # Use the backend Dockerfile
+            dockerfilePath: ./Dockerfile
+            
+            # Run database migrations before starting the app
+            preDeployCommand: "uv run python migrate.py"
+            
+            # Environment variables for the FastAPI backend
+            envVars:
+              # Database configuration (connects to the database above)
+              - key: POSTGRES_HOST
+                fromDatabase:
+                  name: icp-analysis-db
+                  property: host
+              - key: POSTGRES_PORT
+                fromDatabase:
+                  name: icp-analysis-db
+                  property: port
+              - key: POSTGRES_DB
+                fromDatabase:
+                  name: icp-analysis-db
+                  property: database
+              - key: POSTGRES_USER
+                fromDatabase:
+                  name: icp-analysis-db
+                  property: user
+              - key: POSTGRES_PASSWORD
+                fromDatabase:
+                  name: icp-analysis-db
+                  property: password
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: icp-analysis-db
+                  property: connectionString
+              
+              # LLM API Configuration
+              - key: OPENAI_API_KEY
+                sync: false
+              - key: ANTHROPIC_API_KEY
+                sync: false
+              - key: LLM_PROVIDER
+                value: openai
+              - key: LLM_MODEL
+                value: gpt-4-turbo-preview
+              
+              # App Configuration
+              - key: APP_TITLE
+                value: ICP Analysis Dashboard
+              - key: MAX_UPLOAD_SIZE_MB
+                value: "50"
+              - key: DEBUG_MODE
+                value: "false"
+              - key: PORT
+                value: "8000"
+              # Logging Configuration
+              # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+              # Set to DEBUG for detailed troubleshooting
+              - key: LOG_LEVEL
+                value: INFO
+              # Frontend URL for CORS - reference the frontend service
+              - key: FRONTEND_URL
+                fromService:
+                  name: icp-analysis-frontend
+                  type: web
+                  property: host
+            
+            # Health check endpoint (FastAPI health endpoint)
+            healthCheckPath: /api/status
+            
+            # Auto-deploy from main branch
+            autoDeploy: true
 
-  # Next.js Frontend
-  - type: web
-    name: icp-analysis-frontend
-    runtime: docker
-    plan: starter
-    region: oregon
-    
-    # Use the frontend Dockerfile
-    dockerfilePath: ./Dockerfile.frontend
-    
-    # Environment variables for the Next.js frontend
-    envVars:
-      # Point to the backend API service - reference the backend service
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: icp-analysis-api
-          type: web
-          property: host
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "3000"
-    
-    # Health check endpoint (Next.js default)
-    healthCheckPath: /
-    
-    # Auto-deploy from main branch
-    autoDeploy: true
-
-version: "1"
+          # Next.js Frontend
+          - type: web
+            name: icp-analysis-frontend
+            runtime: docker
+            plan: starter
+            region: oregon
+            
+            # Use the frontend Dockerfile
+            dockerfilePath: ./Dockerfile.frontend
+            
+            # Environment variables for the Next.js frontend
+            envVars:
+              # Point to the backend API service - reference the backend service
+              - key: NEXT_PUBLIC_API_URL
+                fromService:
+                  name: icp-analysis-api
+                  type: web
+                  property: host
+              - key: NODE_ENV
+                value: production
+              - key: PORT
+                value: "3000"
+            
+            # Health check endpoint (Next.js default)
+            healthCheckPath: /
+            
+            # Auto-deploy from main branch
+            autoDeploy: true
 

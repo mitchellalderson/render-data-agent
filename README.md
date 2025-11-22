@@ -17,9 +17,9 @@ A modern chat-based application that analyzes customer data using LLM insights t
 
 ## 🚀 Quick Start
 
-### Option 1: Docker (Recommended) 🐳
+### Option 1: Docker Compose (Local Development) 🐳
 
-**Fastest way to get started:**
+**Fastest way to get started locally:**
 
 ```bash
 # 1. Configure environment
@@ -50,9 +50,9 @@ docker-compose up -d --build
 docker-compose exec postgres psql -U postgres -d render_data
 ```
 
-### Option 2: Local Development
+### Option 2: Local Development (Without Docker)
 
-**Run without Docker:**
+**Run services directly on your machine:**
 
 **Prerequisites:**
 - Python 3.9+
@@ -93,6 +93,8 @@ npm run dev
 1. Open http://localhost:3000/data-analyst
 2. Upload your enrichment CSV file (sidebar)
 3. Start asking questions about your data!
+
+> **💡 Production Deployment**: For production, we recommend deploying to [Render](https://render.com). See the [Deployment](#-deployment) section for detailed instructions. Docker Compose is intended for local development only.
 
 ## ✨ Features
 
@@ -770,61 +772,69 @@ docker-compose restart backend frontend
 
 ## 🚀 Deployment
 
-### Deploy Backend
+### Production Deployment (Recommended: Render)
 
-The FastAPI backend can be deployed to:
-- **Render**: Use Web Service, set build command to `pip install -e .`
-- **Railway**: Auto-detects Python, set start command
+**Render** is the recommended production deployment platform for this application.
+
+#### Deploy Backend to Render
+
+1. Create a new **Web Service** on Render
+2. Connect your GitHub repository
+3. Configure settings:
+   - **Build Command**: `pip install -e .` or `uv sync`
+   - **Start Command**: `uvicorn api:app --host 0.0.0.0 --port $PORT`
+   - **Environment**: Python 3
+4. Add environment variables:
+   - `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+   - `DATABASE_URL` (if using PostgreSQL)
+   - `LLM_PROVIDER` (default: `openai`)
+   - `LLM_MODEL` (default: `gpt-4-turbo-preview`)
+5. Deploy! Render will automatically run migrations on each deploy.
+
+#### Deploy Frontend to Render
+
+1. Create a new **Static Site** or **Web Service** on Render
+2. Connect your GitHub repository
+3. Set root directory to `frontend`
+4. Configure settings:
+   - **Build Command**: `cd frontend && npm install && npm run build`
+   - **Publish Directory**: `frontend/.next`
+   - **Environment**: Node
+5. Add environment variable:
+   - `NEXT_PUBLIC_API_URL`: Your backend Render URL (e.g., `https://your-backend.onrender.com`)
+6. Deploy!
+
+**Alternative Production Platforms:**
+- **Railway**: Auto-detects Python/Node, similar setup
 - **Fly.io**: Containerize with Docker
-- **Heroku**: Add `Procfile` with `web: uvicorn api:app --host 0.0.0.0 --port $PORT`
+- **Vercel**: Great for Next.js frontend (one-click deploy)
 
-**Start Command:**
-```bash
-uvicorn api:app --host 0.0.0.0 --port $PORT
-```
+### Local Development (Docker Compose)
 
-### Deploy Frontend
-
-The Next.js frontend can be deployed to:
-- **Vercel**: Optimal for Next.js, one-click deploy
-- **Netlify**: Also supports Next.js well
-- **Render**: Static site or Node service
-
-**Build Command:**
-```bash
-cd frontend && npm install && npm run build
-```
-
-**Start Command:**
-```bash
-cd frontend && npm start
-```
-
-**Important**: Set `NEXT_PUBLIC_API_URL` to your production backend URL.
-
-### Docker Production Deployment
+For local development, use Docker Compose:
 
 ```bash
-# Build images
-docker-compose build
-
-# Start services
+# Start all services (backend, frontend, database)
 docker-compose up -d
 
 # View logs
 docker-compose logs -f
 
-# Scale backend (if needed)
-docker-compose up -d --scale backend=3
+# Stop services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose up -d --build
 ```
 
-**Production Considerations:**
-- Use environment-specific `.env` files
-- Enable HTTPS with reverse proxy (nginx, Caddy)
-- Use Docker secrets for API keys
-- Restrict database port access
-- Set up monitoring and logging
-- Configure resource limits
+**Local Development Setup:**
+1. Copy `env.docker.example` to `.env`
+2. Add your API keys to `.env`
+3. Run `docker-compose up -d`
+4. Access frontend at http://localhost:3000
+5. Access backend API at http://localhost:8000
+
+**Note**: Docker Compose is intended for local development only. For production, use Render or another managed platform.
 
 ## 📁 Repository Structure
 
@@ -833,8 +843,7 @@ render-data-agent/
 ├── api.py                      # FastAPI backend application
 ├── run_api.sh                  # Backend startup script
 ├── pyproject.toml              # Python dependencies
-├── docker-compose.yml          # Docker production setup
-├── docker-compose.dev.yml      # Docker development setup
+├── docker-compose.yml          # Docker setup for local development
 ├── Dockerfile                  # Backend container
 ├── Dockerfile.frontend         # Frontend container
 │
